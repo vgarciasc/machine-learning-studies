@@ -39,13 +39,17 @@ class LSTM:
             m['Why'], m['by']
 
     def save_model(self, filename):
+        data = self.model,\
+               self.index_to_char,\
+               self.char_to_index
         with open(filename, 'wb') as f:
-            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
 
     def load_model(self, filename):
         with open(filename, 'rb') as f:
-            self.model, state = pickle.load(f)
-        return state
+            self.model,\
+            self.index_to_char,\
+            self.char_to_index = pickle.load(f)
 
     def initial_state(self):
         return np.zeros((self.S, 1)), np.zeros((self.S, 1))

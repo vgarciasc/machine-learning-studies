@@ -16,18 +16,18 @@ if __name__ == '__main__':
 
     char_vocab = len(char_to_index)
 
-    # lstm = LSTM(
-    #     V=char_vocab,
-    #     S=state_size,
-    #     char_to_index=char_to_index,
-    #     index_to_char=index_to_char)
+    lstm = LSTM(
+        V=char_vocab,
+        S=state_size,
+        char_to_index=char_to_index,
+        index_to_char=index_to_char)
 
     model_filename = 'C:\\Users\\patyc\\Documents\\GitHub\\ml-studies\\data.pickle'
 
-    with open(filename, 'rb') as f:
-        lstm = pickle.load(f)
+    lstm.load_model(model_filename)
 
-    seed = [char_to_index[input_text[0]]]
+    # lstm.model = model
+    seed = [lstm.char_to_index[input_text[0]]]
 
     sample = lstm.sample(seed, lstm.initial_state(), 500)
     print(sample)
