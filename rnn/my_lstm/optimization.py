@@ -1,5 +1,5 @@
 import numpy as np
-from lstm import utils as util
+import utils as util
 
 
 def get_minibatches(x, y, minibatch_size):
@@ -56,10 +56,24 @@ def adam(lstm, inputs, targets,
         # sample if it's sampling time
         if current_step % print_every == 0:
             seed = [x_mini[0]]
-            sample = lstm.sample(seed, state, 200)
+            sample = lstm.sample(seed, state, 600)
             print("==========================================")
-            print("| step #{}".format(current_step), "; loss: {:.4f} |".format(smooth_loss))
+            print("| step #{}".format(current_step), "; loss: {:.8f} |".format(smooth_loss))
             print("------------------------------------------")
             print("| ...", sample, "... |")
+
+        # if (current_step < 1000 and current_step % 100 == 0) or \
+        #    (current_step < 50000 and current_step % 1000 == 0) or \
+        #    (current_step % 10000 == 0):
+        #     model_filename = "C:\\Users\\patyc\\Documents\\GitHub\\beamer-presentations\\PESC\\TEIA\\Recurrent Neural Networks (Implementation)\\outputs\\shakespeare_pt\\models\\model_" + str(current_step) + ".pickle"
+        #     lstm.save_model(model_filename)
+        #
+        #     seed = [x_mini[0]]
+        #     sample = lstm.sample(seed, state, 2000)
+        #
+        #     sample_filename = "C:\\Users\\patyc\\Documents\\GitHub\\beamer-presentations\\PESC\\TEIA\\Recurrent Neural Networks (Implementation)\\outputs\\shakespeare_pt\\models\\sample_" + str(current_step) + ".txt"
+        #     file = open(sample_filename, "w")
+        #     file.write(sample)
+        #     file.close()
 
     return lstm

@@ -65,10 +65,9 @@ class LSTMv2():
         dh, dWy, dby = l.fc_backward(dy, y_cache)
         dh += dh_next
 
-        dho = c * dh
-        dho = l.sigmoid_backward(dho, ho_sigm_cache)
+        dho = dh * c * (ho * (1 - ho))
 
-        dc = ho * dh
+        dc = ho * dh * (1 - c**2)
         dc = l.tanh_backward(dc, c_tanh_cache)
         dc = dc + dc_next
 
@@ -165,7 +164,7 @@ if __name__ == '__main__':
 
     H = 64
 
-    filename = "C:\\Users\\patyc\\Documents\\GitHub\\ml-studies\\rnn\\raposa.txt"
+    filename = "C:\\Users\\patyc\\Documents\\GitHub\\ml-studies\\rnn\\abba baba.txt"
 
     with open(filename, 'r') as f:
         txt = f.read()

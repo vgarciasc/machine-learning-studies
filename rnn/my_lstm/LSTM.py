@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 
-from my_lstm import utils as u
+import utils as u
 
 
 class LSTM:
@@ -159,7 +159,6 @@ class LSTM:
             caches.append(cache)
 
         # updating loss
-        loss *= 100
         loss /= inputs.shape[0]
 
         # ~ backward pass
@@ -180,10 +179,10 @@ class LSTM:
         return grads, loss, state
 
     def sample(self, seed, state, size=200):
-        # seed = [self.char_to_index[char] for char in 'abba']
+        # seed = [self.char_to_index[char] for char in 'liv']
 
         # advancing state as if 'seed' was read
-        for i in range(0, len(seed) - 2):
+        for i in range(0, len(seed) - 1):
             x = seed[i]
             y, state, _ = self.forward_pass(x, state)
 
@@ -200,8 +199,8 @@ class LSTM:
             chars.append(self.index_to_char[index])
             x = index
 
-        output = ''.join([self.index_to_char[index] for index in seed])
-        output += " => "
-        output += ''.join(chars)
+        # output = ''.join([self.index_to_char[index] for index in seed])
+        # output += " => "
+        output = ''.join(chars)
 
         return output

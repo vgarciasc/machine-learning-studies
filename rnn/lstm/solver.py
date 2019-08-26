@@ -51,7 +51,7 @@ def adam(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_afte
             print()
             print()
 
-        grad, loss, state = nn.train_step(X_mini, y_mini, state)
+        grad, loss, state = nn.iteration(X_mini, y_mini, state)
         smooth_loss = 0.999 * smooth_loss + 0.001 * loss
 
         for k in grad:

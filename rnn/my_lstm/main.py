@@ -1,18 +1,19 @@
 import numpy as np
 
-from my_lstm.optimization import adam
-from my_lstm.LSTM import LSTM
+from optimization import adam
+from LSTM import LSTM
 
 if __name__ == '__main__':
     n_iter = 1000000000
-    print_after = 1000
+    print_every = 100
 
     time_step = 10
     state_size = 64
     learning_rate = 1e-3
 
-    # filename = "C:\\Users\\patyc\\Documents\\GitHub\\ml-studies\\rnn\\abba baba.txt"
-    filename = "C:\\Users\\patyc\\Documents\\GitHub\\rnn-karpathy\\shakespeare.txt"
+    # filename = "C:\\Users\\patyc\\Documents\\GitHub\\ml-studies\\rnn\\my_lstm\\data\\abba baba.txt"
+    # filename = "C:\\Users\\patyc\\Documents\\GitHub\\ml-studies\\rnn\\my_lstm\\data\\shakespeare_pt.txt"
+    filename = "C:\\Users\\patyc\\Documents\\GitHub\\ml-studies\\rnn\\my_lstm\\data\\08-25.txt"
 
     with open(filename, 'r', encoding="utf8") as f:
         input_text = f.read()
@@ -47,5 +48,5 @@ if __name__ == '__main__':
         learning_rate=learning_rate,
         mb_size=time_step,
         iterations=n_iter,
-        print_every=print_after
+        print_every=print_every
     )

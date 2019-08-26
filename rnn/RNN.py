@@ -1,6 +1,22 @@
 import numpy as np
 
 
+def exp_running_avg(running, new, gamma=.9):
+    return gamma * running + (1. - gamma) * new
+
+
+def get_minibatch(X, y, minibatch_size):
+    minibatches = []
+
+    for i in range(0, X.shape[0], minibatch_size):
+        X_mini = X[i:i + minibatch_size]
+        y_mini = y[i:i + minibatch_size]
+
+        minibatches.append((X_mini, y_mini))
+
+    return minibatches
+
+
 class RNN():
     def __init__(self, filename, state_size, step_size, learning_rate):
         self.input_text = open(filename, "r", encoding="utf8").read()
@@ -13,14 +29,18 @@ class RNN():
         self.step_size = step_size
         self.learning_rate = learning_rate
 
-        self.W_xs = np.random.randn(self.state_size, self.char_vocab) * 0.01  # from input to state
-        self.W_ss = np.random.randn(self.state_size, self.state_size) * 0.01  # from state to state
-        self.W_sy = np.random.randn(self.char_vocab, self.state_size) * 0.01  # from state to output
-
-        self.b_s = np.zeros((self.state_size, 1))
-        self.b_y = np.zeros((self.char_vocab, 1))
+        self.model = dict(
+            W_xs=np.random.randn(self.state_size, self.char_vocab) * 0.01,  # from input to state
+            W_ss=np.random.randn(self.state_size, self.state_size) * 0.01,  # from state to state
+            W_sy=np.random.randn(self.char_vocab, self.state_size) * 0.01,  # from state to output
+            b_s=np.zeros((self.state_size, 1)),
+            b_y=np.zeros((self.char_vocab, 1))
+        )
 
     def iteration(self, inputs, targets, initial_state):
+        m = self.model
+        W_xs, W_ss, W_sy, b_s, b_y = m['W_xs'], m['W_ss'], m['W_sy'], m['b_s'], m['b_y']
+
         x = {}
         y = {}
         o = {}  # output probabilities
@@ -40,39 +60,39 @@ class RNN():
             x[t][char_key] = 1
 
             # ~ state
-            state[t] = np.tanh(np.dot(self.W_xs, x[t]) + np.dot(self.W_ss, state[t - 1]) + self.b_s)
+            state[t] = np.tanh(np.dot(W_xs, x[t]) + np.dot(W_ss, state[t - 1]) + b_s)
 
             # ~ output vector
-            y[t] = np.dot(self.W_sy, state[t]) + self.b_y
+            y[t] = np.dot(W_sy, state[t]) + b_y
 
             # ~ softmaxing and creating probabilities
             o[t] = np.exp(y[t]) / np.sum(np.exp(y[t]))
 
             # ~ computing loss
-            loss += - np.log(o[t][targets[t], 0])
+            loss += - np.log(o[t][int(targets[t]), 0])
 
-        dW_xs = np.zeros_like(self.W_xs)
-        dW_ss = np.zeros_like(self.W_ss)
-        dW_sy = np.zeros_like(self.W_sy)
+        dW_xs = np.zeros_like(W_xs)
+        dW_ss = np.zeros_like(W_ss)
+        dW_sy = np.zeros_like(W_sy)
 
-        db_s = np.zeros_like(self.b_s)
-        db_y = np.zeros_like(self.b_y)
+        db_s = np.zeros_like(b_s)
+        db_y = np.zeros_like(b_y)
         ds_next = np.zeros_like(state[0])
 
         # Backward pass
         for t in range(len(inputs) - 1, 0, -1):
             # ~ backpropagate into y
             dy = np.copy(o[t])
-            dy[targets[t]] -= 1
+            dy[int(targets[t])] -= 1  # derivative of loss wrt output through softmax
             dW_sy += np.dot(dy, state[t].T)
             db_y += dy
 
             # ~ backpropagate into state
-            ds = np.dot(self.W_sy.T, dy) + ds_next
+            ds = np.dot(W_sy.T, dy) + ds_next
             ds_raw = (1 - state[t] * state[t]) * ds  # d(tanh)
             db_s += ds_raw
             dW_ss += np.dot(ds_raw, state[t - 1].T)
-            ds_next = np.dot(self.W_ss.T, ds_raw)
+            ds_next = np.dot(W_ss.T, ds_raw)
 
             # ~ backpropagate into x
             dW_xs += np.dot(ds_raw, x[t].T)
@@ -81,9 +101,63 @@ class RNN():
         for param in [dW_xs, dW_ss, dW_sy, db_s, db_y]:
             np.clip(param, -5, 5, out=param)
 
-        return loss, dW_xs, dW_ss, dW_sy, db_s, db_y, state[len(inputs) - 1]
+        grad = dict(W_xs=dW_xs, W_ss=dW_ss, W_sy=dW_sy, b_s=db_s, b_y=db_y)
+
+        return loss, grad, state[len(inputs) - 1]
+
+    def adam_rnn(self, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
+        M = {k: np.zeros_like(v) for k, v in self.model.items()}
+        R = {k: np.zeros_like(v) for k, v in self.model.items()}
+        beta1 = .9
+        beta2 = .999
+
+        X_train = np.array([self.char_to_index[char] for char in self.input_text])
+        y_train = [self.char_to_index[char] for char in self.input_text[1:]]
+        y_train.append(self.char_to_index[" "])
+        y_train = np.array(y_train)
+
+        minibatches = get_minibatch(X_train, y_train, mb_size)
+
+        idx = 0
+        state = np.zeros((self.state_size, 1))
+        smooth_loss = - np.log(1.0 / self.char_vocab) * self.step_size
+
+        for iter in range(1, n_iter + 1):
+            t = iter
+
+            if idx >= len(minibatches):
+                idx = 0
+                state = np.zeros((self.state_size, 1))
+
+            X_mini, y_mini = minibatches[idx]
+            idx += 1
+
+            if iter % print_after == 0:
+                print("=========================================================================")
+                print('Iter-{} loss: {:.4f}'.format(iter, smooth_loss))
+                print("=========================================================================")
+
+                sample = self.sample(state, X_mini[0], 100)
+                print(sample)
+
+                print("=========================================================================")
+                print()
+                print()
+
+            loss, grad, state = self.iteration(X_mini, y_mini, state)
+            smooth_loss = 0.999 * smooth_loss + 0.001 * loss
+
+            for k in grad:
+                M[k] = exp_running_avg(M[k], grad[k], beta1)
+                R[k] = exp_running_avg(R[k], grad[k] ** 2, beta2)
+
+                m_k_hat = M[k] / (1. - beta1 ** (t))
+                r_k_hat = R[k] / (1. - beta2 ** (t))
+
+                self.model[k] -= alpha * m_k_hat / (np.sqrt(r_k_hat) + 1e-8)
 
     def loop(self):
+        # m
         mW_xs = np.zeros_like(self.W_xs)
         mW_ss = np.zeros_like(self.W_ss)
         mW_sy = np.zeros_like(self.W_sy)
@@ -91,6 +165,15 @@ class RNN():
         mb_s = np.zeros_like(self.b_s)
         mb_y = np.zeros_like(self.b_y)
 
+        # r
+        rW_xs = np.zeros_like(self.W_xs)
+        rW_ss = np.zeros_like(self.W_ss)
+        rW_sy = np.zeros_like(self.W_sy)
+
+        rb_s = np.zeros_like(self.b_s)
+        rb_y = np.zeros_like(self.b_y)
+
+        # init
         current_index = 0
         current_step = 0
         smooth_loss = - np.log(1.0 / self.char_vocab) * self.step_size
@@ -131,11 +214,16 @@ class RNN():
                 sample = self.sample(state, self.index_to_char[input_vector[0]], 200)
                 print("------------")
                 print("step #", current_step, "loss: ", smooth_loss)
+                # print("--~--")
+                # print("dW_xs: ", dW_xs.mean(), "; dW_ss: ", dW_ss.mean(), "; dW_sy: ", dW_sy.mean())
+                # print("db_y: ", db_y.mean(), "; db_s: ", db_s.mean())
+                # print("--~--")
                 print(sample)
 
     def sample(self, state, seed_str, length):
-        seed = [self.char_to_index[char] for char in seed_str]
-        output = seed_str
+        seed = [0]
+        output = ''
+        m = self.model
 
         x = None
 
@@ -143,11 +231,11 @@ class RNN():
         for t in range(0, len(seed)):
             x = np.zeros((self.char_vocab, 1))
             x[seed[t]] = 1
-            state = np.tanh(np.dot(self.W_xs, x) + np.dot(self.W_ss, state) + self.b_s)
+            state = np.tanh(np.dot(m['W_xs'], x) + np.dot(m['W_ss'], state) + m['b_s'])
 
         for t in range(0, length):
-            state = np.tanh(np.dot(self.W_xs, x) + np.dot(self.W_ss, state) + self.b_s)
-            y = np.dot(self.W_sy, state) + self.b_y
+            state = np.tanh(np.dot(m['W_xs'], x) + np.dot(m['W_ss'], state) + m['b_s'])
+            y = np.dot(m['W_sy'], state) + m['b_y']
             o = np.exp(y) / np.sum(np.exp(y))
 
             sampled_letter = np.random.choice(range(self.char_vocab), p=o.ravel())
@@ -158,10 +246,14 @@ class RNN():
 
         return output
 
+
 if __name__ == "__main__":
     # filename = "C:\\Users\\patyc\\Documents\\mablelrosk.txt"
-    filename = "C:\\Users\\patyc\\Documents\\GitHub\\rnn-karpathy\\shakespeare.txt"
+    # filename = "C:\\Users\\patyc\\Documents\\GitHub\\rnn-karpathy\\shakespeare.txt"
+    # filename = "C:\\Users\\patyc\\Documents\\GitHub\\ml-studies\\rnn\\01011001.txt"
+    filename = "C:\\Users\\patyc\\Documents\\GitHub\\ml-studies\\rnn\\abba baba.txt"
+    # filename = "C:\\Users\\patyc\\Documents\\GitHub\\ml-studies\\rnn\\raposa.txt"
 
-    rnn = RNN(filename, state_size=100, step_size=25, learning_rate=1e-1)
+    rnn = RNN(filename, state_size=64, step_size=1, learning_rate=1e-3)
 
-    rnn.loop()
+    rnn.adam_rnn()
