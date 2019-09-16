@@ -1,3 +1,3 @@
-![](./mule.png)
+# machine-learning-studies
 
-# mule-studies
+general scratchpad that I'm using while studying some ML stuff
