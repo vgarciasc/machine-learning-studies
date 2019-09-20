@@ -1,14 +1,16 @@
 import utils as u
 import numpy as np
 
-class SigmoidUnit:
-    def __init__(self, size):
+class Neuron:
+    def __init__(self, size, func=u.sigmoid, d_func=u.dsigmoid):
         self.W = np.random.randn(size, 1).T * 0.01
         self.b = np.random.randn(1, 1) * 0.01
+        self.func = func
+        self.d_func = d_func
 
     def predict(self, inputs):
         output = self.W @ inputs + self.b
-        return u.sigmoid(output)
+        return self.func(output)
 
     def update_weights(self, learning_rate, error, inputs):
         self.W += learning_rate * error * inputs
@@ -20,7 +22,7 @@ class NeuralNetwork:
         self.neurons_per_layer = blueprint
         self.learning_rate = learning_rate
 
-        self.model = [[SigmoidUnit(self.neurons_per_layer[l-1])
+        self.model = [[Neuron(self.neurons_per_layer[l-1], u.sigmoid, u.dsigmoid)
                        for _ in range(0, self.neurons_per_layer[l])]
                       for l in range(1, self.layers)]
         self.model.insert(0, [])
@@ -66,9 +68,11 @@ class NeuralNetwork:
                 error_caused = 0
                 for i in range(0, self.neurons_per_layer[layer+1]):
                     unit = self.model[layer+1][i]
-                    error_caused += unit.W[0][neuron] * errors[layer+1][i]
+                    error_caused += unit.W[0][neuron] \
+                                    * errors[layer+1][i] \
+                                    * unit.d_func(neuron_output)
 
-                errors[layer][neuron] = u.dsigmoid(neuron_output) * error_caused
+                errors[layer][neuron] = error_caused
 
         return errors
 
@@ -80,13 +84,14 @@ class NeuralNetwork:
                 self.model[layer][neuron].update_weights(self.learning_rate, error, input)
 
 if __name__ == "__main__":
+    # ~ XOR
     training_data = [(np.array([0, 0]), [0]),
                      (np.array([0, 1]), [1]),
                      (np.array([1, 0]), [1]),
-                     (np.array([1, 1]), [1])]
+                     (np.array([1, 1]), [0])]
 
-    nn = NeuralNetwork([2, 1])
-    nn.train(training_data, 1000)
+    nn = NeuralNetwork([2, 2, 1])
+    nn.train(training_data, 100000)
 
     for input, label in training_data:
         print(input, nn.predict(input)[-1])

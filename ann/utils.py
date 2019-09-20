@@ -12,3 +12,9 @@ def tanh(x):
 
 def dtanh(x):
     return 1 - x**2
+
+def relu(x):
+    return x if x > 0 else 0
+
+def drelu(x):
+    return 1 if x > 0 else 0
