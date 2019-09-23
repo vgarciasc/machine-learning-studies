@@ -34,11 +34,16 @@ class NeuralNetwork:
                       for l in range(1, self.layers)]
         self.model.insert(0, [])
 
-    def train(self, data, epochs):
+    def train(self, data, epochs=1):
         for _ in range(0, epochs):
+            i = 0
             for input, correct in data:
                 outputs = self.predict(input)
                 self.backpropagate(correct, outputs)
+                
+                if i % 10 == 0:
+                    print("> trained ", i, " samples")
+                i += 1
 
     def predict(self, inputs):
         outputs = [[] for _ in range(0, self.layers)]
@@ -65,7 +70,7 @@ class NeuralNetwork:
         # calculate output layer errors
         for i in range(0, len(outputs[-1])):
             o = outputs[-1][i]
-            errors[-1] = [u.dsigmoid(o) * (correct[i] - o)]
+            errors[-1][i] = u.dsigmoid(o) * (correct[i] - o)
 
         # calculate hidden layer errors
         for layer in reversed(range(0, self.layers-1)):
