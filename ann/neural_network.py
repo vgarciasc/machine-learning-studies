@@ -1,12 +1,13 @@
 import utils as u
 import numpy as np
+import data_bird as db
 
 class Neuron:
-    def __init__(self, size, func=u.sigmoid, d_func=u.dsigmoid):
-        self.W = np.random.randn(size, 1).T * 0.01
-        self.b = np.random.randn(1, 1) * 0.01
+    def __init__(self, size, W=None, b=None, func=u.sigmoid, d_func=u.dsigmoid):
         self.func = func
         self.d_func = d_func
+        self.W = W if W is not None else np.random.randn(size, 1).T * 0.01
+        self.b = b if b is not None else np.random.randn(1, 1) * 0.01
 
     def predict(self, inputs):
         output = self.W @ inputs + self.b
@@ -16,13 +17,19 @@ class Neuron:
         self.W += learning_rate * error * inputs
         self.b += learning_rate * error
 
+    def serialize(self):
+        return (self.W, self.b)
+    
+    def deserialize(self, data):
+        (self.W, self.b) = data
+
 class NeuralNetwork:
     def __init__(self, blueprint, learning_rate=0.05):
         self.layers = len(blueprint)
         self.neurons_per_layer = blueprint
         self.learning_rate = learning_rate
 
-        self.model = [[Neuron(self.neurons_per_layer[l-1], u.sigmoid, u.dsigmoid)
+        self.model = [[Neuron(self.neurons_per_layer[l-1], func=u.sigmoid, d_func=u.dsigmoid)
                        for _ in range(0, self.neurons_per_layer[l])]
                       for l in range(1, self.layers)]
         self.model.insert(0, [])
@@ -83,6 +90,14 @@ class NeuralNetwork:
                 input = outputs[layer-1]
                 self.model[layer][neuron].update_weights(self.learning_rate, error, input)
 
+    def serialize(self):
+        # weights = [[n.serialize() for n in _] for _ in self.model]
+        return (self.model, self.layers, self.neurons_per_layer)
+
+    def deserialize(self, data):
+        (self.model, self.layers, self.neurons_per_layer) = data
+        # self.model = [[n.deserialize() for n in _] for _ in data]
+
 if __name__ == "__main__":
     # ~ XOR
     training_data = [(np.array([0, 0]), [0]),
@@ -91,7 +106,11 @@ if __name__ == "__main__":
                      (np.array([1, 1]), [0])]
 
     nn = NeuralNetwork([2, 2, 1])
-    nn.train(training_data, 100000)
+    # nn.train(training_data, 100000)
+
+    # nn.deserialize(db.load_model("ann_xor_1.pickle"))
 
     for input, label in training_data:
         print(input, nn.predict(input)[-1])
+
+    # db.save_model(nn.serialize(), "ann_xor_1.pickle")
