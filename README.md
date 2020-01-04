@@ -1,5 +1,5 @@
 # machine-learning-studies
-> (STUDY) Implementations of some Machine Learning algorithms 
+> (STUDY) Scratchpad for implementations of Machine Learning algorithms
 
 - [Perceptron](https://github.com/vgarciasc/machine-learning-studies/tree/master/ann)
 - [Multi-layered Perceptron](https://github.com/vgarciasc/machine-learning-studies/tree/master/ann)
